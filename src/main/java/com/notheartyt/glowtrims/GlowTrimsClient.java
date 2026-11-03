@@ -4,7 +4,8 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.minecraft.network.chat.Component;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.Minecraft;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,40 +13,27 @@ public final class GlowTrimsClient implements ClientModInitializer {
     public static final String MOD_ID = "glowtrims";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+    /** Set by the command; the screen is opened on the next client tick so chat does not close it. */
+    private static volatile boolean openGuiNextTick = false;
+
     @Override
     public void onInitializeClient() {
         GlowConfig.load();
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) ->
-                dispatcher.register(ClientCommandManager.literal("glowtrims")
-                        .executes(ctx -> {
-                            ctx.getSource().sendFeedback(Component.literal(status()));
+                dispatcher.register(ClientCommandManager.literal("glow")
+                        .then(ClientCommandManager.literal("gui").executes(ctx -> {
+                            openGuiNextTick = true;
                             return 1;
-                        })
-                        .then(ClientCommandManager.literal("on").executes(ctx -> {
-                            GlowConfig.setEnabled(true);
-                            ctx.getSource().sendFeedback(Component.literal(status()));
-                            return 1;
-                        }))
-                        .then(ClientCommandManager.literal("off").executes(ctx -> {
-                            GlowConfig.setEnabled(false);
-                            ctx.getSource().sendFeedback(Component.literal(status()));
-                            return 1;
-                        }))
-                        .then(ClientCommandManager.argument("percent", IntegerArgumentType.integer(0, 100))
-                                .executes(ctx -> {
-                                    GlowConfig.setPercent(IntegerArgumentType.getInteger(ctx, "percent"));
-                                    GlowConfig.setEnabled(true);
-                                    ctx.getSource().sendFeedback(Component.literal(status()));
-                                    return 1;
-                                }))));
+                        }))));
 
-        LOGGER.info("Glow Trims loaded: trims render full-bright. Use /glowtrims on|off|<0-100>.");
-    }
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            if (openGuiNextTick) {
+                openGuiNextTick = false;
+                Minecraft.getInstance().setScreen(new GlowScreen());
+            }
+        });
 
-    private static String status() {
-        return "Glow Trims: " + (GlowConfig.isEnabled() ? "ON" : "OFF")
-                + " | strength " + GlowConfig.getPercent() + "%"
-                + "  (/glowtrims on, /glowtrims off, /glowtrims 50)";
+        LOGGER.info("Glow Trims loaded. Use /glow gui to open the settings.");
     }
 }
