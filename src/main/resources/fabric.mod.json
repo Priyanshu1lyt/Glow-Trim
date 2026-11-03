@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "glowtrims",
+  "version": "${version}",
+  "name": "Glow Trims",
+  "description": "Makes vanilla armor trims render at full brightness while preserving their original trim colors.",
+  "authors": ["NotHeartYT"],
+  "contact": {
+    "homepage": "https://github.com/Priyanshu1lyt/Glow-Trim",
+    "sources": "https://github.com/Priyanshu1lyt/Glow-Trim",
+    "issues": "https://github.com/Priyanshu1lyt/Glow-Trim/issues"
+  },
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "com.notheartyt.glowtrims.GlowTrimsClient"
+    ]
+  },
+  "mixins": [
+    "glowtrims.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
