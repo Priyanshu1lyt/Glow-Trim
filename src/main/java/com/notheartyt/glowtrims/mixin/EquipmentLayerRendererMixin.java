@@ -4,29 +4,39 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.layers.EquipmentLayerRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.ModifyArgs;
+import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 /**
- * Changes only the light value passed to the vanilla armor-trim submit call.
- * The original trim sprite and tint are left untouched, so every material
- * keeps its normal vanilla color while remaining visible in dark scenes.
+ * Makes only the armor-trim layer render at full brightness.
  *
- * Call order inside renderLayers (1.21.11): base layer (0), layer glint (1),
- * trim (2), trim glint (3). Light is the 5th argument (index 4).
+ * Targets use Fabric intermediary names (remap = false) because Minecraft
+ * 1.21.11 has two overloaded renderLayers methods and the Mojang-name refmap
+ * could not be generated for them (that caused "Scanned 0 target(s)").
+ *
+ *   method_64077 / method_64078 = EquipmentLayerRenderer#renderLayers overloads
+ *   class_11785                 = OrderedSubmitNodeCollector
+ *   method_73490                = submitModel(model, state, pose, renderType,
+ *                                 light, overlay, tint, sprite, outline, crumbling)
+ *
+ * Only the trim layer passes a non-null atlas sprite, so that is the only call
+ * whose light value (argument 4) is replaced. Base armor and glint stay vanilla.
  */
 @Mixin(EquipmentLayerRenderer.class)
 public abstract class EquipmentLayerRendererMixin {
-    @ModifyArg(
-            method = "renderLayers",
+    @ModifyArgs(
+            method = {"method_64077", "method_64078"},
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/OrderedSubmitNodeCollector;submitModel",
-                    ordinal = 2
+                    target = "Lnet/minecraft/class_11785;method_73490",
+                    remap = false
             ),
-            index = 4,
+            remap = false,
             require = 1
     )
-    private int glowtrims$makeVanillaTrimFullBright(int originalLight) {
-        return LightTexture.FULL_BRIGHT;
+    private void glowtrims$makeVanillaTrimFullBright(Args args) {
+        if (args.get(7) != null) {
+            args.set(4, LightTexture.FULL_BRIGHT);
+        }
     }
 }
